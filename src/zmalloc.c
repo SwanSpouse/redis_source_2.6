@@ -118,6 +118,7 @@ static void zmalloc_default_oom(size_t size) {
 
 static void (*zmalloc_oom_handler)(size_t) = zmalloc_default_oom;
 
+//@lmj 调用zmalloc函数，申请size大小的空间
 void *zmalloc(size_t size) {
     void *ptr = malloc(size+PREFIX_SIZE);
 

@@ -36,7 +36,7 @@
 /*
  * 链表节点
  */
-typedef struct listNode {
+typedef struct listNode { 
 
     // 前驱节点
     struct listNode *prev;
