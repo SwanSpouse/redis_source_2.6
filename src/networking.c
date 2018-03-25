@@ -64,7 +64,8 @@ redisClient *createClient(int fd) {
     // 在 fd == -1 时，创建的客户端为伪终端
     if (fd != -1) {
         anetNonBlock(NULL,fd);
-        anetTcpNoDelay(NULL,fd);
+        anetTcpNoDelay(NULL,fd); 
+        //@lmj 当fd可用的时候，执行readQueryFromClient这个方法。这个方法会从Client读取redis命令，并解析返回结果。
         if (aeCreateFileEvent(server.el,fd,AE_READABLE, readQueryFromClient, c) == AE_ERR) {
             close(fd);
             zfree(c);
@@ -125,7 +126,6 @@ redisClient *createClient(int fd) {
     c->bpop.timeout = 0;
     c->bpop.target = NULL;
 
-    //
     c->io_keys = listCreate();
 
     // 所有被监视的键
@@ -139,7 +139,8 @@ redisClient *createClient(int fd) {
     listSetMatchMethod(c->pubsub_patterns,listMatchObjects);
 
     // 如果不是伪客户端，那么将客户端加入到服务器客户端列表中
-    if (fd != -1) listAddNodeTail(server.clients,c);
+    if (fd != -1) 
+        listAddNodeTail(server.clients,c);
 
     // 初始化事务状态
     initClientMultiState(c);
@@ -725,6 +726,7 @@ void acceptTcpHandler(aeEventLoop *el, int fd, void *privdata, int mask) {
     REDIS_NOTUSED(privdata);
 
     // 连接
+    // @lmj 接收到客户端的连接
     cfd = anetTcpAccept(server.neterr, fd, cip, &cport);
     if (cfd == AE_ERR) {
         redisLog(REDIS_WARNING,"Accepting client connection: %s", server.neterr);

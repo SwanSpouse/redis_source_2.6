@@ -1625,10 +1625,13 @@ void initServer() {
     aeCreateTimeEvent(server.el, 1, serverCron, NULL, NULL);
 
     // 关联网络连接事件
-    if (server.ipfd > 0 && aeCreateFileEvent(server.el,server.ipfd,AE_READABLE,
-        acceptTcpHandler,NULL) == AE_ERR) redisPanic("Unrecoverable error creating server.ipfd file event.");
-    if (server.sofd > 0 && aeCreateFileEvent(server.el,server.sofd,AE_READABLE,
-        acceptUnixHandler,NULL) == AE_ERR) redisPanic("Unrecoverable error creating server.sofd file event.");
+    // @lmj 当Tcp连接可用的时候，执行acceptTcpHandler
+    if (server.ipfd > 0 && aeCreateFileEvent(server.el,server.ipfd,AE_READABLE, acceptTcpHandler, NULL) == AE_ERR) 
+        redisPanic("Unrecoverable error creating server.ipfd file event.");
+    // @lmj 当Unix连接可用的时候，执行acceptTcpHandler
+    // @lmjQ 这里还需要了解一下这个Unix连接是怎么个连接方法。
+    if (server.sofd > 0 && aeCreateFileEvent(server.el,server.sofd,AE_READABLE, acceptUnixHandler,NULL) == AE_ERR) 
+        redisPanic("Unrecoverable error creating server.sofd file event.");
 
     // 如果 AOF 已打开，那么打开或创建 AOF 文件
     if (server.aof_state == REDIS_AOF_ON) {

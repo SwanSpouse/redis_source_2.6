@@ -121,7 +121,8 @@ void aeStop(aeEventLoop *eventLoop) {
  * 当 fd 可用时，执行 proc 函数
  */
 int aeCreateFileEvent(aeEventLoop *eventLoop, int fd, int mask, aeFileProc *proc, void *clientData) {
-    if (fd >= eventLoop->setsize) return AE_ERR;
+    if (fd >= eventLoop->setsize) 
+        return AE_ERR;
     aeFileEvent *fe = &eventLoop->events[fd];
 
     // 监听指定 fd
@@ -130,8 +131,10 @@ int aeCreateFileEvent(aeEventLoop *eventLoop, int fd, int mask, aeFileProc *proc
 
     // 设置文件事件类型
     fe->mask |= mask;
-    if (mask & AE_READABLE) fe->rfileProc = proc;
-    if (mask & AE_WRITABLE) fe->wfileProc = proc;
+    if (mask & AE_READABLE) 
+        fe->rfileProc = proc;
+    if (mask & AE_WRITABLE) 
+        fe->wfileProc = proc;
 
     fe->clientData = clientData;
 

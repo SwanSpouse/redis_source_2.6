@@ -840,6 +840,7 @@ struct redisServer {
     // 当前客户端，只在创建崩溃报告时使用
     redisClient *current_client; /* Current client, only used on crash report */
 
+    // @lmj 还有记录错误的buff呢。
     char neterr[ANET_ERR_LEN];   /* Error buffer for anet.c */
     dict *migrate_cached_sockets;/* MIGRATE cached sockets */
 

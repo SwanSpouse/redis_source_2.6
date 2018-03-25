@@ -312,9 +312,10 @@ int anetUnixServer(char *err, char *path, mode_t perm)
     return s;
 }
 
+// @lmj 通用的获取文件描述符的方法。因为上层有Tcp和Unix两种
 static int anetGenericAccept(char *err, int s, struct sockaddr *sa, socklen_t *len) {
     int fd;
-    //@lmj 循环处理来自客户端的连接请求
+    // @lmj 循环处理来自客户端的连接请求
     while(1) {
         fd = accept(s,sa,len);
         if (fd == -1) {
@@ -325,11 +326,13 @@ static int anetGenericAccept(char *err, int s, struct sockaddr *sa, socklen_t *l
                 return ANET_ERR;
             }
         }
+        // @lmj 这里的意思是有人来连接了，就退出。
         break;
     }
     return fd;
 }
 
+// @lmj 接受TCP请求
 int anetTcpAccept(char *err, int s, char *ip, int *port) {
     int fd;
     struct sockaddr_in sa;
@@ -337,8 +340,10 @@ int anetTcpAccept(char *err, int s, char *ip, int *port) {
     if ((fd = anetGenericAccept(err,s,(struct sockaddr*)&sa,&salen)) == ANET_ERR)
         return ANET_ERR;
 
+     // @lmj 获取Client的addr和port
     if (ip) strcpy(ip,inet_ntoa(sa.sin_addr));
     if (port) *port = ntohs(sa.sin_port);
+    // @lmj 返回文件标识符
     return fd;
 }
 
