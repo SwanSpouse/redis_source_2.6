@@ -120,9 +120,7 @@ void aeStop(aeEventLoop *eventLoop) {
  * 根据 mask 参数的值，监听 fd 文件的状态，
  * 当 fd 可用时，执行 proc 函数
  */
-int aeCreateFileEvent(aeEventLoop *eventLoop, int fd, int mask,
-        aeFileProc *proc, void *clientData)
-{
+int aeCreateFileEvent(aeEventLoop *eventLoop, int fd, int mask, aeFileProc *proc, void *clientData) {
     if (fd >= eventLoop->setsize) return AE_ERR;
     aeFileEvent *fe = &eventLoop->events[fd];
 

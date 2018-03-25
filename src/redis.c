@@ -1821,10 +1821,7 @@ void call(redisClient *c, int flags) {
      * not geneated from reading an AOF. */
     // 如果命令不是来自于 AOF 文件，并且命令可以发送给 MONITOR 
     // 那么将命令发送给 MONITOR
-    if (listLength(server.monitors) &&
-        !server.loading &&
-        !(c->cmd->flags & REDIS_CMD_SKIP_MONITOR))
-    {
+    if (listLength(server.monitors) && !server.loading && !(c->cmd->flags & REDIS_CMD_SKIP_MONITOR)) {
         replicationFeedMonitors(c,server.monitors,c->db->id,c->argv,c->argc);
     }
 

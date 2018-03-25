@@ -57,8 +57,7 @@ static void anetSetError(char *err, const char *fmt, ...)
     va_end(ap);
 }
 
-int anetNonBlock(char *err, int fd)
-{
+int anetNonBlock(char *err, int fd){
     int flags;
 
     /* Set the socket nonblocking.
@@ -75,8 +74,7 @@ int anetNonBlock(char *err, int fd)
     return ANET_OK;
 }
 
-int anetTcpNoDelay(char *err, int fd)
-{
+int anetTcpNoDelay(char *err, int fd){
     int yes = 1;
     if (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &yes, sizeof(yes)) == -1)
     {
@@ -316,6 +314,7 @@ int anetUnixServer(char *err, char *path, mode_t perm)
 
 static int anetGenericAccept(char *err, int s, struct sockaddr *sa, socklen_t *len) {
     int fd;
+    //@lmj 循环处理来自客户端的连接请求
     while(1) {
         fd = accept(s,sa,len);
         if (fd == -1) {

@@ -65,8 +65,7 @@ redisClient *createClient(int fd) {
     if (fd != -1) {
         anetNonBlock(NULL,fd);
         anetTcpNoDelay(NULL,fd);
-        if (aeCreateFileEvent(server.el,fd,AE_READABLE, readQueryFromClient, c) == AE_ERR)
-        {
+        if (aeCreateFileEvent(server.el,fd,AE_READABLE, readQueryFromClient, c) == AE_ERR) {
             close(fd);
             zfree(c);
             return NULL;
@@ -256,17 +255,12 @@ void _addReplyObjectToList(redisClient *c, robj *o) {
         tail = listNodeValue(listLast(c->reply));
 
         /* Append to this object when possible. */
-        // 如果最后一个节点所保存的回复，加上新回复，
-        // 内容总长度小于等于 REDIS_REPLY_CHUNK_BYTES 
-        // 那么将新回复追加到节点回复当中。
-        if (tail->ptr != NULL &&
-            sdslen(tail->ptr)+sdslen(o->ptr) <= REDIS_REPLY_CHUNK_BYTES)
-        {
+        // 如果最后一个节点所保存的回复，加上新回复，内容总长度小于等于 REDIS_REPLY_CHUNK_BYTES。那么将新回复追加到节点回复当中。
+        if (tail->ptr != NULL && sdslen(tail->ptr)+sdslen(o->ptr) <= REDIS_REPLY_CHUNK_BYTES) {
             c->reply_bytes -= zmalloc_size_sds(tail->ptr);
             tail = dupLastObjectIfNeeded(c->reply);
             tail->ptr = sdscatlen(tail->ptr,o->ptr,sdslen(o->ptr));
             c->reply_bytes += zmalloc_size_sds(tail->ptr);
-        
         // 否则，为新回复单独创建一个节点
         } else {
             incrRefCount(o);
@@ -588,7 +582,7 @@ void addReplyLongLongWithPrefix(redisClient *c, long long ll, char prefix) {
     len = ll2string(buf+1,sizeof(buf)-1,ll);
     buf[len+1] = '\r';
     buf[len+2] = '\n';
-    addReplyString(c,buf,len+3);
+    addReplyString(c,buf,len+3); //@lmj +3 其中一个是prefix一个是\r一个是\n
 }
 
 /*
