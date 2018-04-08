@@ -698,6 +698,7 @@ dictEntry *dictFind(dict *d, const void *key)
     // 计算哈希值
     h = dictHashKey(d, key);
     // 在两个哈希表中查找
+    // @lmj 如果没有在rehash的过程中，则只需要查一个表就好了。
     for (table = 0; table <= 1; table++) {
         // 索引值
         idx = h & d->ht[table].sizemask;

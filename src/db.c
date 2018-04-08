@@ -245,6 +245,7 @@ robj *dbRandomKey(redisDb *db) {
  * 从数据库中删除 key ，key 对应的值，以及对应的过期时间（如果有的话）
  */
 int dbDelete(redisDb *db, robj *key) {
+    // @lmj 这里有一个疑问。为什么过期时间要单独放一个dcit里面，而不设计成是robj的成员变量呢？
     /* Deleting an entry from the expires dict will not free the sds of
      * the key, because it is shared with the main dictionary. */
     // 先删除过期时间
