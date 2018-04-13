@@ -1287,10 +1287,8 @@ void createSharedObjects(void) {
 void initServerConfig() {
     getRandomHexChars(server.runid,REDIS_RUN_ID_SIZE);
     server.runid[REDIS_RUN_ID_SIZE] = '\0';
-
     // 判断架构
     server.arch_bits = (sizeof(long) == 8) ? 64 : 32;
-
     // 网络连接相关
     server.port = REDIS_SERVERPORT;
     server.bindaddr = NULL;

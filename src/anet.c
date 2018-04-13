@@ -125,6 +125,7 @@ int anetResolve(char *err, char *host, char *ipbuf)
 
 static int anetCreateSocket(char *err, int domain) {
     int s, on = 1;
+    // @lmj 根据地址和端口初始化socket
     if ((s = socket(domain, SOCK_STREAM, 0)) == -1) {
         anetSetError(err, "creating socket: %s", strerror(errno));
         return ANET_ERR;
@@ -272,11 +273,11 @@ static int anetListen(char *err, int s, struct sockaddr *sa, socklen_t len) {
     return ANET_OK;
 }
 
-int anetTcpServer(char *err, int port, char *bindaddr)
-{
+int anetTcpServer(char *err, int port, char *bindaddr){
     int s;
     struct sockaddr_in sa;
 
+    // @lmj 创建s，s是socket套接字
     if ((s = anetCreateSocket(err,AF_INET)) == ANET_ERR)
         return ANET_ERR;
 
@@ -284,11 +285,13 @@ int anetTcpServer(char *err, int port, char *bindaddr)
     sa.sin_family = AF_INET;
     sa.sin_port = htons(port);
     sa.sin_addr.s_addr = htonl(INADDR_ANY);
+    // @lmj 绑定地址。
     if (bindaddr && inet_aton(bindaddr, &sa.sin_addr) == 0) {
         anetSetError(err, "invalid bind address");
         close(s);
         return ANET_ERR;
     }
+    // @lmj 在这里进行bind和listen
     if (anetListen(err,s,(struct sockaddr*)&sa,sizeof(sa)) == ANET_ERR)
         return ANET_ERR;
     return s;
@@ -313,7 +316,7 @@ int anetUnixServer(char *err, char *path, mode_t perm)
 }
 
 // @lmj 通用的获取文件描述符的方法。因为上层有Tcp和Unix两种
-static int anetGenericAccept(char *err, int s, struct sockaddr *sa, socklen_t *len) {
+static int anetGenericAccept(char *err, int s, struct sockaddr *sa, socklen_t *len){
     int fd;
     // @lmj 循环处理来自客户端的连接请求
     while(1) {
