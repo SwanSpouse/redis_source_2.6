@@ -305,8 +305,8 @@ void sendBulkToSlave(aeEventLoop *el, int fd, void *privdata, int mask) {
         // 更新附属节点状态
         slave->replstate = REDIS_REPL_ONLINE;
         // TODO：
-        if (aeCreateFileEvent(server.el, slave->fd, AE_WRITABLE,
-            sendReplyToClient, slave) == AE_ERR) {
+        // @lmj当slave->fd变得AE_WRITABLE的时候，执行sendReplyToClient函数
+        if (aeCreateFileEvent(server.el, slave->fd, AE_WRITABLE, sendReplyToClient, slave) == AE_ERR) {
             freeClient(slave);
             return;
         }

@@ -1624,6 +1624,7 @@ void initServer() {
 
     // 关联网络连接事件
     // @lmj 当Tcp连接可用的时候，执行acceptTcpHandler
+    // @lmj 当Server端的ipfd变得AE_READABLE的时候，执行acceptTcpHandler函数
     if (server.ipfd > 0 && aeCreateFileEvent(server.el,server.ipfd,AE_READABLE, acceptTcpHandler, NULL) == AE_ERR) 
         redisPanic("Unrecoverable error creating server.ipfd file event.");
     // @lmj 当Unix连接可用的时候，执行acceptTcpHandler

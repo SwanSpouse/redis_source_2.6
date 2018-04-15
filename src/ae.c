@@ -119,6 +119,12 @@ void aeStop(aeEventLoop *eventLoop) {
 /*
  * 根据 mask 参数的值，监听 fd 文件的状态，
  * 当 fd 可用时，执行 proc 函数
+ * @lmj 
+ * params: eventLoop 事件
+ * params: fd 套接字描述符
+ * params: *proc 事件处理器
+ * 用于将给定套接字的给定事件加入到I/O多路复用程序的监听范围之内，
+ * 并对事件和事件处理器进行关联。
  */
 int aeCreateFileEvent(aeEventLoop *eventLoop, int fd, int mask, aeFileProc *proc, void *clientData) {
     if (fd >= eventLoop->setsize) 

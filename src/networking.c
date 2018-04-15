@@ -66,6 +66,7 @@ redisClient *createClient(int fd) {
         anetNonBlock(NULL,fd);
         anetTcpNoDelay(NULL,fd); 
         //@lmj 当fd可用的时候，执行readQueryFromClient这个方法。这个方法会从Client读取redis命令，并解析返回结果。
+        //@lmj 在这里注册事件，当fd变成AE_READABLE的时候，调用readQueryFromClient方法。
         if (aeCreateFileEvent(server.el,fd,AE_READABLE, readQueryFromClient, c) == AE_ERR) {
             close(fd);
             zfree(c);
@@ -718,6 +719,12 @@ static void acceptCommonHandler(int fd, int flags) {
     c->flags |= flags;
 }
 
+/**
+ * @lmj 连接应答处理器，这个处理器用于对连接服务器监听套接字的客户端进行应答。
+ * 当redis服务器进行初始化的时候，程序会将这个连接应答处理器和服务器监听套接字的AE_READABLE事件关联起来。
+ * 当有客户端调用sys/socket.h/connect函数链接服务器监听套接字的时候，套接字就会产生AE_READABLE事件，引发
+ * 连接应答处理器执行，并执行相应的套接字应答操作。
+ */
 void acceptTcpHandler(aeEventLoop *el, int fd, void *privdata, int mask) {
     int cport, cfd;
     char cip[128];
@@ -882,7 +889,13 @@ void freeClientsInAsyncFreeQueue(void) {
     }
 }
 
-/*
+/**
+ * 命令回复处理器
+ * 这个处理器负责将服务器执行命令后得到的命令回复通过套接字返回给客户端。
+ * 当服务器有命令回复需要传送给客户端的时候，吴福气会将客户端套接字的AE_WRITABLE事件和
+ * 命令回复处理器关联起来，当客户端准备好接受服务器传回的命令回复时，就会产生AE_WRITABLE事件，
+ * 引发命令回复处理器执行，并执行相应的套接字写入操作。
+ * 
  * 将所有回复发送到客户端
  */
 void sendReplyToClient(aeEventLoop *el, int fd, void *privdata, int mask) {
@@ -1221,6 +1234,13 @@ void processInputBuffer(redisClient *c) {
     }
 }
 
+/**
+ * Redis命令请求处理器。
+ * 这个处理器负责从套接字中读入客户端发送的命令请求内容。具体实现为unistd.h/read函数的包装。
+ * 当一个客户端连接通过链接应答处理器成功连接到服务器之后，服务器会将客户端的套接字的AE_READABLE事件和
+ * 命令请求处理器关联起来。当客户端向服务器发送命令请求的时候，套接字就会产生AE_READABLE事件，引发命令请求
+ * 处理器执行，并执行相应的套接字读入操作。
+ */
 void readQueryFromClient(aeEventLoop *el, int fd, void *privdata, int mask) {
     redisClient *c = (redisClient*) privdata;
     int nread, readlen;

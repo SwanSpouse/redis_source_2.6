@@ -47,8 +47,7 @@
 
 #include "anet.h"
 
-static void anetSetError(char *err, const char *fmt, ...)
-{
+static void anetSetError(char *err, const char *fmt, ...){
     va_list ap;
 
     if (!err) return;
@@ -329,7 +328,6 @@ static int anetGenericAccept(char *err, int s, struct sockaddr *sa, socklen_t *l
                 return ANET_ERR;
             }
         }
-        // @lmj 这里的意思是有人来连接了，就退出。
         break;
     }
     return fd;
