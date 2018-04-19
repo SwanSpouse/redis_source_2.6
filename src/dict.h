@@ -97,7 +97,7 @@ typedef struct dictht {
     unsigned long size;     
 
     // 指针数组的长度掩码，用于计算索引值
-    unsigned long sizemask; 
+    unsigned long sizemask;
 
     // 哈希表现有的节点数量
     unsigned long used;     
