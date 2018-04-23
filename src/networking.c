@@ -178,9 +178,8 @@ redisClient *createClient(int fd) {
 int prepareClientToWrite(redisClient *c) {
     if (c->flags & REDIS_LUA_CLIENT) return REDIS_OK;
     if (c->fd <= 0) return REDIS_ERR; /* Fake client */
-    if (c->bufpos == 0 && listLength(c->reply) == 0 &&
-        (c->replstate == REDIS_REPL_NONE || c->replstate == REDIS_REPL_ONLINE) &&
-        aeCreateFileEvent(server.el, c->fd, AE_WRITABLE, sendReplyToClient, c) == AE_ERR)
+    if (c->bufpos == 0 && listLength(c->reply) == 0 && (c->replstate == REDIS_REPL_NONE || c->replstate == REDIS_REPL_ONLINE) &&
+         aeCreateFileEvent(server.el, c->fd, AE_WRITABLE, sendReplyToClient, c) == AE_ERR)
         return REDIS_ERR;
     return REDIS_OK;
 }
@@ -892,7 +891,7 @@ void freeClientsInAsyncFreeQueue(void) {
 /**
  * 命令回复处理器
  * 这个处理器负责将服务器执行命令后得到的命令回复通过套接字返回给客户端。
- * 当服务器有命令回复需要传送给客户端的时候，吴福气会将客户端套接字的AE_WRITABLE事件和
+ * 当服务器有命令回复需要传送给客户端的时候，服务器会将客户端套接字的AE_WRITABLE事件和
  * 命令回复处理器关联起来，当客户端准备好接受服务器传回的命令回复时，就会产生AE_WRITABLE事件，
  * 引发命令回复处理器执行，并执行相应的套接字写入操作。
  * 

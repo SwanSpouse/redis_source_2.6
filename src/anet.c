@@ -296,8 +296,7 @@ int anetTcpServer(char *err, int port, char *bindaddr){
     return s;
 }
 
-int anetUnixServer(char *err, char *path, mode_t perm)
-{
+int anetUnixServer(char *err, char *path, mode_t perm){
     int s;
     struct sockaddr_un sa;
 
@@ -317,7 +316,7 @@ int anetUnixServer(char *err, char *path, mode_t perm)
 // @lmj 通用的获取文件描述符的方法。因为上层有Tcp和Unix两种
 static int anetGenericAccept(char *err, int s, struct sockaddr *sa, socklen_t *len){
     int fd;
-    // @lmj 循环处理来自客户端的连接请求
+    // @lmj 阻塞，等待客户端连接事件
     while(1) {
         fd = accept(s,sa,len);
         if (fd == -1) {
@@ -333,7 +332,7 @@ static int anetGenericAccept(char *err, int s, struct sockaddr *sa, socklen_t *l
     return fd;
 }
 
-// @lmj 接受TCP请求
+// @lmj 接受TCP连接请求
 int anetTcpAccept(char *err, int s, char *ip, int *port) {
     int fd;
     struct sockaddr_in sa;

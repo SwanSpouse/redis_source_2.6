@@ -610,7 +610,6 @@ void appendCommand(redisClient *c) {
     o = lookupKeyWrite(c->db,c->argv[1]);
     if (o == NULL) {
         // 对象不存在 ...
-        
         // 创建字符串对象，并将它添加到数据库
         c->argv[2] = tryObjectEncoding(c->argv[2]);
         dbAdd(c->db,c->argv[1],c->argv[2]);
@@ -618,17 +617,14 @@ void appendCommand(redisClient *c) {
         totlen = stringObjectLen(c->argv[2]);
     } else {
         // 对象存在...
-        
         // 如果不是字符串，直接返回
-        if (checkType(c,o,REDIS_STRING))
+        if (checkType(c, o, REDIS_STRING))
             return;
-
         // 检查拼接完成后，字符串的长度是否合法
         append = c->argv[2];
         totlen = stringObjectLen(o) + sdslen(append->ptr);
         if (checkStringLength(c,totlen) != REDIS_OK)
             return;
-
         // 如果 key 对象是被共享或未被编码的，那么创建一个副本
         if (o->refcount != 1 || o->encoding != REDIS_ENCODING_RAW) {
             robj *decoded = getDecodedObject(o);
@@ -636,7 +632,6 @@ void appendCommand(redisClient *c) {
             decrRefCount(decoded);
             dbOverwrite(c->db,c->argv[1],o);
         }
-
         // 进行拼接
         o->ptr = sdscatlen(o->ptr,append->ptr,sdslen(append->ptr));
         totlen = sdslen(o->ptr);
