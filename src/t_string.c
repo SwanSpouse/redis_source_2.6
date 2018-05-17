@@ -72,7 +72,7 @@ void setGenericCommand(redisClient *c, int nx, robj *key, robj *val, robj *expir
 
     // 如果带有 expire 参数，那么将它从 sds 转为 long long 类型
     if (expire) {
-        if (getLongLongFromObjectOrReply(c, expire, &milliseconds, NULL) != REDIS_OK)
+        if (getLongLongFroßmObjectOrReply(c, expire, &milliseconds, NULL) != REDIS_OK)
             return;
         if (milliseconds <= 0) {
             addReplyError(c,"invalid expire time in SETEX");

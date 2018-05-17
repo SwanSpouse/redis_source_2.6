@@ -1912,8 +1912,7 @@ int processCommand(redisClient *c) {
     if (!c->cmd) {
         // 命令没找，出错
         flagTransaction(c);
-        addReplyErrorFormat(c,"unknown command '%s'",
-            (char*)c->argv[0]->ptr);
+        addReplyErrorFormat(c,"unknown command '%s'",(char*)c->argv[0]->ptr);
         return REDIS_OK;
     } else if ((c->cmd->arity > 0 && c->cmd->arity != c->argc) ||
                (c->argc < -c->cmd->arity)) {
@@ -1934,8 +1933,7 @@ int processCommand(redisClient *c) {
     }
 
     /* If cluster is enabled, redirect here */
-    if (server.cluster_enabled &&
-                !(c->cmd->getkeys_proc == NULL && c->cmd->firstkey == 0)) {
+    if (server.cluster_enabled &&!(c->cmd->getkeys_proc == NULL && c->cmd->firstkey == 0)) {
         int hashslot;
 
         if (server.cluster.state != REDIS_CLUSTER_OK) {

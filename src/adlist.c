@@ -89,8 +89,7 @@ void listRelease(list *list)
  *
  * T = O(1)
  */
-list *listAddNodeHead(list *list, void *value)
-{
+list *listAddNodeHead(list *list, void *value) {
     listNode *node;
 
     if ((node = zmalloc(sizeof(*node))) == NULL)
@@ -111,7 +110,6 @@ list *listAddNodeHead(list *list, void *value)
     }
 
     list->len++;
-
     return list;
 }
 
