@@ -1286,14 +1286,18 @@ int rdbLoad(char *filename) {
         rdb.update_cksum = rioGenericUpdateChecksum;
 
     // 检查 rdb 文件头（“REDIS”字符串，以及版本号）
+    //@lmj 这里面一共读取了9个字节。头五个字节是REDIS，后四个字节是0006。这里是保证有9个字节才继续？
     if (rioRead(&rdb,buf,9) == 0) goto eoferr;
     buf[9] = '\0';
+
+    //@lmj 验证头5个字节是REDIS，如果不是的话就说明不是REDIS RDB文件。
     if (memcmp(buf,"REDIS",5) != 0) {   // "REDIS"
         fclose(fp);
         redisLog(REDIS_WARNING,"Wrong signature trying to load DB from file");
         errno = EINVAL;
         return REDIS_ERR;
     }
+    //@lmj 读取版本号。
     rdbver = atoi(buf+5);   // 版本号
     if (rdbver < 1 || rdbver > REDIS_RDB_VERSION) {
         fclose(fp);
@@ -1303,12 +1307,14 @@ int rdbLoad(char *filename) {
     }
 
     startLoading(fp);
+    //@lmj 这里真正开始对RDB文件进行处理。
     while(1) {
         robj *key, *val;
         expiretime = -1;
 
         /* Serve the clients from time to time */
         // 间隔性服务客户端
+        // @lmj 这里很有意思，还间歇性服务客户端？那你说这个时候如果本来存在的key没有导入进来，咋办？
         if (!(loops++ % 1000)) {
             // 刷新载入进程信息
             loadingProgress(rioTell(&rdb));
@@ -1317,7 +1323,7 @@ int rdbLoad(char *filename) {
         }
 
         /* Read type. */
-        // 读入类型标识符
+        // 读入类型标识符 @lmj 这个字节标记了值对象的类型，EOF、过期时间等等。
         if ((type = rdbLoadType(&rdb)) == -1) goto eoferr;
 
         // 接下来的值是一个过期时间

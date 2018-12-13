@@ -1118,11 +1118,7 @@ int serverCron(struct aeEventLoop *eventLoop, long long id, void *clientData) {
 
          /* Trigger an AOF rewrite if needed */
          // 如果有需要，开始 AOF 文件重写
-         if (server.rdb_child_pid == -1 &&
-             server.aof_child_pid == -1 &&
-             server.aof_rewrite_perc &&
-             server.aof_current_size > server.aof_rewrite_min_size)
-         {
+         if (server.rdb_child_pid == -1 && server.aof_child_pid == -1 && server.aof_rewrite_perc && server.aof_current_size > server.aof_rewrite_min_size) {
             long long base = server.aof_rewrite_base_size ?
                             server.aof_rewrite_base_size : 1;
             long long growth = (server.aof_current_size*100/base) - 100;

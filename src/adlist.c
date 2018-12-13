@@ -315,8 +315,7 @@ listNode *listNext(listIter *iter)
  *
  * T = O(N)，N 为 orig 列表的长度
  */
-list *listDup(list *orig)
-{
+list *listDup(list *orig){
     list *copy;
     listIter *iter;
     listNode *node;
@@ -419,27 +418,28 @@ listNode *listIndex(list *list, long index) {
         n = list->head;
         while(index-- && n) n = n->next;
     }
-
     return n;
 }
 
 /*
  * 取出列表的尾节点，将它插入到表头，成为新的表头节点
- *
+ * 
+ * 从1 <> 2 <> 3 <> 4
+ * 变成4 <> 1 <> 2 <> 3
  * T = O(1)
  */
 void listRotate(list *list) {
-    listNode *tail = list->tail;
+    listNode *newTail = list->tail;
 
     // 列表只有一个元素
     if (listLength(list) <= 1) return;
 
     // 取出尾节点
-    list->tail = tail->prev;
+    list->tail = newTail->prev;
     list->tail->next = NULL;
     // 将它插入到表头
-    list->head->prev = tail;
-    tail->prev = NULL;
-    tail->next = list->head;
-    list->head = tail;
+    list->head->prev = newTail;
+    newTail->prev = NULL;
+    newTail->next = list->head;
+    list->head = newTail;
 }

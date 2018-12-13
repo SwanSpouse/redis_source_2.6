@@ -321,9 +321,7 @@ void flushAppendOnlyFile(int force) {
          * the write for a couple of seconds. */
         // 如果 aof_fsync 队列里已经有正在等待的任务
         if (sync_in_progress) {
-
             // 推迟 aof 重写 ...
-
             if (server.aof_flush_postponed_start == 0) {
                 // 上一次没有推迟冲洗过，记录推延的当前时间，然后返回
                 /* No previous write postponinig, remember that we are
@@ -383,7 +381,6 @@ void flushAppendOnlyFile(int force) {
     }
     // 更新 AOF 文件的当前大小
     server.aof_current_size += nwritten;
-
     /* Re-use AOF buffer when it is small enough. The maximum comes from the
      * arena size of 4k minus some overhead (but is otherwise arbitrary). */
     // 如果 aof 缓存不是太大，那么重用它，否则，清空 aof 缓存
@@ -413,7 +410,6 @@ void flushAppendOnlyFile(int force) {
         aof_fsync(server.aof_fd); /* Let's try to get this data on the disk */
         // 更新对 AOF 文件最后一次进行 fsync 的时间
         server.aof_last_fsync = server.unixtime;
-
     // AOF 模式为每秒一次，并且距离上次写 AOF 文件已经超过 1 秒
     } else if ((server.aof_fsync == AOF_FSYNC_EVERYSEC &&
                 server.unixtime > server.aof_last_fsync)) {

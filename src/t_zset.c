@@ -328,7 +328,7 @@ int zslDelete(zskiplist *zsl, double score, robj *obj) {
 
 /*
  * 检查 value 是否属于 spec 指定的范围内
- *
+ * @lmj 判断value是否大于给定区间的最小值。
  * T = O(1)
  */
 static int zslValueGteMin(double value, zrangespec *spec) {
@@ -337,7 +337,7 @@ static int zslValueGteMin(double value, zrangespec *spec) {
 
 /*
  * 检查 value 是否属于 spec 指定的范围内
- *
+ * @lmj 判断value是否小于给定区间的最大值。
  * T = O(1)
  */
 static int zslValueLteMax(double value, zrangespec *spec) {
@@ -354,8 +354,7 @@ int zslIsInRange(zskiplist *zsl, zrangespec *range) {
     zskiplistNode *x;
 
     /* Test for ranges that will always be empty. */
-    if (range->min > range->max ||
-            (range->min == range->max && (range->minex || range->maxex)))
+    if (range->min > range->max || (range->min == range->max && (range->minex || range->maxex)))
         return 0;
 
     // 如果 zset 的最大节点的 score 比范围的最小值要小
@@ -393,8 +392,7 @@ zskiplistNode *zslFirstInRange(zskiplist *zsl, zrangespec range) {
     x = zsl->header;
     for (i = zsl->level-1; i >= 0; i--) {
         /* Go forward while *OUT* of range. */
-        while (x->level[i].forward &&
-            !zslValueGteMin(x->level[i].forward->score,&range))
+        while (x->level[i].forward && !zslValueGteMin(x->level[i].forward->score,&range))
                 x = x->level[i].forward;
     }
 
@@ -426,8 +424,7 @@ zskiplistNode *zslLastInRange(zskiplist *zsl, zrangespec range) {
     x = zsl->header;
     for (i = zsl->level-1; i >= 0; i--) {
         /* Go forward while *IN* range. */
-        while (x->level[i].forward &&
-            zslValueLteMax(x->level[i].forward->score,&range))
+        while (x->level[i].forward && zslValueLteMax(x->level[i].forward->score,&range))
                 x = x->level[i].forward;
     }
 
@@ -457,8 +454,7 @@ unsigned long zslDeleteRangeByScore(zskiplist *zsl, zrangespec range, dict *dict
     // O(N)
     x = zsl->header;
     for (i = zsl->level-1; i >= 0; i--) {
-        while (x->level[i].forward && (range.minex ?
-            x->level[i].forward->score <= range.min :
+        while (x->level[i].forward && (range.minex ? x->level[i].forward->score <= range.min :
             x->level[i].forward->score < range.min))
                 x = x->level[i].forward;
         update[i] = x;
@@ -1296,7 +1292,6 @@ void zaddGenericCommand(redisClient *c, int incr) {
     zobj = lookupKeyWrite(c->db,key);
     // 对象不存在，创建有序集
     if (zobj == NULL) {
-
         // 创建 skiplist 编码的 zset
         if (server.zset_max_ziplist_entries == 0 ||
             server.zset_max_ziplist_value < sdslen(c->argv[3]->ptr))
@@ -1384,10 +1379,8 @@ void zaddGenericCommand(redisClient *c, int incr) {
             zset *zs = zobj->ptr;
             zskiplistNode *znode;
             dictEntry *de;
-    
             // 编码元素
             ele = c->argv[3+j*2] = tryObjectEncoding(c->argv[3+j*2]);
-
             // 在字典中查找元素, O(1)
             de = dictFind(zs->dict,ele);
 
