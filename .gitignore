@@ -21,7 +21,8 @@ deps/lua/src/liblua.a
 .prerequisites
 *.dSYM
 .vscode/*
-
+.idea/*
+cmake-build-debug/*
 
 
 

@@ -272,6 +272,7 @@ static int anetListen(char *err, int s, struct sockaddr *sa, socklen_t len) {
     return ANET_OK;
 }
 
+// 初始化TCP Server
 int anetTcpServer(char *err, int port, char *bindaddr){
     int s;
     struct sockaddr_in sa;
@@ -296,6 +297,7 @@ int anetTcpServer(char *err, int port, char *bindaddr){
     return s;
 }
 
+// 初始化Unix Server
 int anetUnixServer(char *err, char *path, mode_t perm){
     int s;
     struct sockaddr_un sa;
