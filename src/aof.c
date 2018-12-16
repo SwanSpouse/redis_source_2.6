@@ -404,6 +404,8 @@ void flushAppendOnlyFile(int force) {
     // 如果有需要，执行 fsync
 
     // AOF 模式为总是 fsync ，那么执行 fsync
+    //      TODO @lmj 难道每次就是在这里进行aof_fsync == always的刷写吗？这个不合理啊。因为这个是事件，需要beforeSleep
+    // 触发才行啊。那有可能这个期间内已经写入了N条数据了呢？
     if (server.aof_fsync == AOF_FSYNC_ALWAYS) {
         /* aof_fsync is defined as fdatasync() for Linux in order to avoid
          * flushing metadata. */
@@ -411,6 +413,7 @@ void flushAppendOnlyFile(int force) {
         // 更新对 AOF 文件最后一次进行 fsync 的时间
         server.aof_last_fsync = server.unixtime;
     // AOF 模式为每秒一次，并且距离上次写 AOF 文件已经超过 1 秒
+    // 所以说这里每次不是准确的时间。
     } else if ((server.aof_fsync == AOF_FSYNC_EVERYSEC &&
                 server.unixtime > server.aof_last_fsync)) {
         // 仅在没有 fsync 在后台进行时，才将新的 fsync 任务放到后台执行
@@ -532,8 +535,7 @@ void feedAppendOnlyFile(struct redisCommand *cmd, int dictid, robj **argv, int a
 
         // 让 AOF 文件切换 DB
         snprintf(seldb,sizeof(seldb),"%d",dictid);
-        buf = sdscatprintf(buf,"*2\r\n$6\r\nSELECT\r\n$%lu\r\n%s\r\n",
-            (unsigned long)strlen(seldb),seldb);
+        buf = sdscatprintf(buf,"*2\r\n$6\r\nSELECT\r\n$%lu\r\n%s\r\n", (unsigned long)strlen(seldb),seldb);
 
         // 程序切换 DB
         server.aof_selected_db = dictid;

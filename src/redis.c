@@ -1612,6 +1612,7 @@ void initServer() {
     server.stop_writes_on_bgsave_err = 1;
 
     // 关联 server cron 到时间事件
+    // 这个1的意思是每毫秒都要执行一次serverCron吗？
     aeCreateTimeEvent(server.el, 1, serverCron, NULL, NULL);
 
     // 关联网络连接事件 在这里把server.ipfd和sofd也就是上面启动的tcp server和unix server和acceptTcpHandler和acceptUnixHanlder关联起来

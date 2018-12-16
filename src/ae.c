@@ -551,14 +551,17 @@ int aeWait(int fd, int mask, long long milliseconds) {
 void aeMain(aeEventLoop *eventLoop) {
 
     eventLoop->stop = 0;
-
+    // TODO @lmj 还有一个问题就是这个死循环的执行频率快吗？没秒几千次？？？
     while (!eventLoop->stop) {
-
         // 如果有需要在事件处理前执行的函数，那么运行它
+        // TODO @lmj 其实我就是不太理解这里。为啥说每次回复客户端，这个地方都会被执行？
+        // TODO @lmj 如果配置了aof_fsync == always, 那么在beforesleep里面会把每次执行的redis 命令append 到aof文件中？
+        // TODO @lmj 哦哦。应该是这样，客户端的读写已经被绑定成事件了。如果客户端变成READABLE的时候，就会触发这个。
         if (eventLoop->beforesleep != NULL)
             eventLoop->beforesleep(eventLoop);
 
-        // 开始处理事件
+        // 开始处理事件，这里包括了普通事件和时间事件
+        // TODO @lmj 处理一轮这样的时间事件和文件时间大概要多长时间呢？
         aeProcessEvents(eventLoop, AE_ALL_EVENTS);
     }
 }
