@@ -558,6 +558,7 @@ void aeMain(aeEventLoop *eventLoop) {
         // TODO @lmj 其实我就是不太理解这里。为啥说每次回复客户端，这个地方都会被执行？
         // TODO @lmj 如果配置了aof_fsync == always, 那么在beforesleep里面会把每次执行的redis 命令append 到aof文件中？
         // TODO @lmj 哦哦。应该是这样，客户端的读写已经被绑定成事件了。如果客户端变成READABLE的时候，就会触发这个。
+        // TODO @lmj AOF always配置是在这里刷写到磁盘中的。
         if (eventLoop->beforesleep != NULL)
             eventLoop->beforesleep(eventLoop);
 

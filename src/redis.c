@@ -3072,6 +3072,7 @@ int main(int argc, char **argv) {
     }
 
     // 设置事件执行前要运行的函数
+    // 这个beforeSleep函数里面有AOF相关的任务。
     aeSetBeforeSleepProc(server.el, beforeSleep);
 
     // 启动服务器循环

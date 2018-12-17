@@ -143,7 +143,7 @@ typedef struct aeEventLoop {
     // 最后一次执行时间事件的时间
     time_t lastTime;     /* Used to detect system clock skew */
     // 已注册的文件事件
-    aeFileEvent *events; /* Registered events */
+    aeFileEvent *events; /* Registered events */ // TODO @lmj 这个是什么时候从aeFileEvent到aeFiredEvent的？
     // 已就绪的文件事件
     aeFiredEvent *fired; /* Fired events */
     // 时间事件
