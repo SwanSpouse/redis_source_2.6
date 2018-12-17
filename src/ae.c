@@ -401,6 +401,7 @@ static int processTimeEvents(aeEventLoop *eventLoop) {
  * (that may be registered by time event callbacks just processed).
  *
  * 处理所有已到达的时间事件，以及所有已就绪的文件事件。
+ * TODO @lmj (Client读写状态的切换，这个我还不是特别明白)
  *
  * Without special flags the function sleeps until some file event
  * fires, or when the next time event occurrs (if any).
@@ -562,6 +563,7 @@ void aeMain(aeEventLoop *eventLoop) {
 
         // 开始处理事件，这里包括了普通事件和时间事件
         // TODO @lmj 处理一轮这样的时间事件和文件时间大概要多长时间呢？
+        // 在aeProcessEvents先处理文件事件，再处理时间事件。
         aeProcessEvents(eventLoop, AE_ALL_EVENTS);
     }
 }

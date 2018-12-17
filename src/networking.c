@@ -814,6 +814,7 @@ void freeClient(redisClient *c) {
     dictRelease(c->pubsub_channels);
     listRelease(c->pubsub_patterns);
     /* Obvious cleanup */
+    // 删除绑定的文件事件
     aeDeleteFileEvent(server.el, c->fd, AE_READABLE);
     aeDeleteFileEvent(server.el, c->fd, AE_WRITABLE);
     listRelease(c->reply);

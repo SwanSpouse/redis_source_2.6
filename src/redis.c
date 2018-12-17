@@ -1617,9 +1617,11 @@ void initServer() {
 
     // 关联网络连接事件 在这里把server.ipfd和sofd也就是上面启动的tcp server和unix server和acceptTcpHandler和acceptUnixHanlder关联起来
     // @lmj 当Tcp连接可用的时候，执行acceptTcpHandler
+    // 这里不对，这个动作不是自动触发的，是在下面的aeMain中触发的。AE_READABLE的时候，会触发一个文件事件，这事件是在aeMain中被执行的。
     if (server.ipfd > 0 && aeCreateFileEvent(server.el, server.ipfd, AE_READABLE, acceptTcpHandler, NULL) == AE_ERR)
         redisPanic("Unrecoverable error creating server.ipfd file event.");
     // @lmj 当Unix连接可用的时候，执行acceptTcpHandler
+    // 这里不对，这个动作不是自动触发的，是在下面的aeMain中触发的。AE_READABLE的时候，会触发一个文件事件，这事件是在aeMain中被执行的。
     // @lmjQ 这里还需要了解一下这个Unix连接是怎么个连接方法。
     if (server.sofd > 0 && aeCreateFileEvent(server.el, server.sofd, AE_READABLE, acceptUnixHandler, NULL) == AE_ERR)
         redisPanic("Unrecoverable error creating server.sofd file event.");
