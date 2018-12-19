@@ -418,6 +418,7 @@ void initSentinel(void) {
 
     /* Remove usual Redis commands from the command table, then just add
      * the SENTINEL command. */
+    // 删除 command table 中的数据，并加载sentinel command
     dictEmpty(server.commands);
     for (j = 0; j < sizeof(sentinelcmds) / sizeof(sentinelcmds[0]); j++) {
         int retval;
@@ -428,6 +429,7 @@ void initSentinel(void) {
     }
 
     /* Initialize various data structures. */
+    // sentinel 所监控的master map
     sentinel.masters = dictCreate(&instancesDictType, NULL);
     sentinel.tilt = 0;
     sentinel.tilt_start_time = mstime();

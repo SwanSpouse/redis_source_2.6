@@ -2974,6 +2974,7 @@ int main(int argc, char **argv) {
     /* We need to init sentinel right now as parsing the configuration file
      * in sentinel mode will have the effect of populating the sentinel
      * data structures with master nodes to monitor. */
+    // 如果是以sentinel 模式启动的话，则加载sentinel 的配置文件。并初始化sentinel
     if (server.sentinel_mode) {
         initSentinelConfig();
         initSentinel();
