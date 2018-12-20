@@ -986,9 +986,9 @@ struct redisServer {
     time_t unixtime;        /* Unix time sampled every second. */
 
     /* Pubsub */
-    // 频道
+    // 普通频道
     dict *pubsub_channels;  /* Map channels to list of subscribed clients */
-    // 模式
+    // 模式频道
     list *pubsub_patterns;  /* A list of pubsub_patterns */
 
     /* Cluster */
