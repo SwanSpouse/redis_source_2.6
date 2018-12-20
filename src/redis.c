@@ -1038,6 +1038,7 @@ int serverCron(struct aeEventLoop *eventLoop, long long id, void *clientData) {
      * if we resize the HT while there is the saving child at work actually
      * a lot of memory movements in the parent will cause a lot of pages
      * copied. */
+    // 这些东西如果sentinel模式下会变成-1？
     // 在保存 RDB 或者 AOF 重写时不进行 REHASH ，避免写时复制
     if (server.rdb_child_pid == -1 && server.aof_child_pid == -1) {
         // 将哈希表的比率维持在 1:1 附近
@@ -1153,6 +1154,7 @@ int serverCron(struct aeEventLoop *eventLoop, long long id, void *clientData) {
     /* Run the Sentinel timer if we are in sentinel mode. */
     // 运行监视器计时器
     run_with_period(100) {
+        // sentinel 同步信息所用
         if (server.sentinel_mode) sentinelTimer();
     }
 
