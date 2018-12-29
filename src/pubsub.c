@@ -98,9 +98,13 @@ int pubsubSubscribeChannel(redisClient *c, robj *channel) {
 
     /* Notify the client */
     // 向客户端返回值，告知订阅已成功
+    // 先写上回复的长度3
     addReply(c, shared.mbulkhdr[3]);
+    // 返回subscribe字符串
     addReply(c, shared.subscribebulk);
+    // 返回channel名字
     addReplyBulk(c, channel);
+    // 当前所有订阅的普通频道和模式频道和
     addReplyLongLong(c, dictSize(c->pubsub_channels) + listLength(c->pubsub_patterns));
 
     return retval;
@@ -152,8 +156,7 @@ int pubsubUnsubscribeChannel(redisClient *c, robj *channel, int notify) {
         addReply(c, shared.mbulkhdr[3]);
         addReply(c, shared.unsubscribebulk);
         addReplyBulk(c, channel);
-        addReplyLongLong(c, dictSize(c->pubsub_channels) +
-                            listLength(c->pubsub_patterns));
+        addReplyLongLong(c, dictSize(c->pubsub_channels) + listLength(c->pubsub_patterns));
 
     }
 
