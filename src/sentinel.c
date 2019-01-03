@@ -1391,6 +1391,7 @@ void sentinelReconnectInstance(sentinelRedisInstance *ri) {
 /* ======================== Redis instances pinging  ======================== */
 
 /* Process the INFO output from masters. */
+// 处理INFO 命令的结果
 void sentinelRefreshInstanceInfo(sentinelRedisInstance *ri, const char *info) {
     sds *lines;
     int numlines, j;
@@ -1630,10 +1631,10 @@ void sentinelPingReplyCallback(redisAsyncContext *c, void *reply, void *privdata
     if (!reply || !ri) return;
     r = reply;
 
-    if (r->type == REDIS_REPLY_STATUS ||
-        r->type == REDIS_REPLY_ERROR) {
+    if (r->type == REDIS_REPLY_STATUS || r->type == REDIS_REPLY_ERROR) {
         /* Update the "instance available" field only if this is an
          * acceptable reply. */
+        //  strncmp == 0 居然是表示两个字符串相等
         if (strncmp(r->str, "PONG", 4) == 0 ||
             strncmp(r->str, "LOADING", 7) == 0 ||
             strncmp(r->str, "MASTERDOWN", 10) == 0) {
@@ -1644,8 +1645,7 @@ void sentinelPingReplyCallback(redisAsyncContext *c, void *reply, void *privdata
             if (strncmp(r->str, "BUSY", 4) == 0 &&
                 (ri->flags & SRI_S_DOWN) &&
                 !(ri->flags & SRI_SCRIPT_KILL_SENT)) {
-                redisAsyncCommand(ri->cc,
-                                  sentinelDiscardReplyCallback, NULL, "SCRIPT KILL");
+                redisAsyncCommand(ri->cc, sentinelDiscardReplyCallback, NULL, "SCRIPT KILL");
                 ri->flags |= SRI_SCRIPT_KILL_SENT;
             }
         }
@@ -2189,6 +2189,7 @@ void sentinelInfoCommand(redisClient *c) {
 /* ===================== SENTINEL availability checks ======================= */
 
 /* Is this instance down from our point of view? */
+// 主观下线检测
 void sentinelCheckSubjectivelyDown(sentinelRedisInstance *ri) {
     mstime_t elapsed = mstime() - ri->last_avail_time;
 
@@ -2299,6 +2300,7 @@ void sentinelReceiveIsMasterDownReply(redisAsyncContext *c, void *reply, void *p
  * SENTINEL IS-MASTER-DOWN-BY-ADDR requests to other sentinels
  * in order to get the replies that allow to reach the quorum and
  * possibly also mark the master as objectively down. */
+// 向其它sentinel询问master的状态
 void sentinelAskMasterStateToOtherSentinels(sentinelRedisInstance *master) {
     dictIterator *di;
     dictEntry *de;
@@ -2319,7 +2321,7 @@ void sentinelAskMasterStateToOtherSentinels(sentinelRedisInstance *master) {
 
         /* Only ask if master is down to other sentinels if:
          *
-         * 1) We believe it is down, or there is a failover in progress.
+         * 1) We believe it is down, or there is a failover(自动切换) in progress.
          * 2) Sentinel is connected.
          * 3) We did not received the info within SENTINEL_ASK_PERIOD ms. */
         if ((master->flags & (SRI_S_DOWN | SRI_FAILOVER_IN_PROGRESS)) == 0)
@@ -2329,6 +2331,7 @@ void sentinelAskMasterStateToOtherSentinels(sentinelRedisInstance *master) {
             continue;
 
         /* Ask */
+        // 向其它sentinel 询问master的状态
         ll2string(port, sizeof(port), master->addr->port);
         retval = redisAsyncCommand(ri->cc,
                                    sentinelReceiveIsMasterDownReply, NULL,
@@ -3014,6 +3017,7 @@ void sentinelHandleRedisInstance(sentinelRedisInstance *ri) {
 
     /* Only masters */
     if (ri->flags & SRI_MASTER) {
+        // 向其它sentinel询问master的状态
         sentinelAskMasterStateToOtherSentinels(ri);
     }
 
@@ -3028,6 +3032,7 @@ void sentinelHandleRedisInstance(sentinelRedisInstance *ri) {
     }
 
     /* Every kind of instance */
+    // 检测主观下线
     sentinelCheckSubjectivelyDown(ri);
 
     /* Masters and slaves */
@@ -3037,6 +3042,7 @@ void sentinelHandleRedisInstance(sentinelRedisInstance *ri) {
 
     /* Only masters */
     if (ri->flags & SRI_MASTER) {
+        // 检测客观下线
         sentinelCheckObjectivelyDown(ri);
         sentinelStartFailoverIfNeeded(ri);
         sentinelFailoverStateMachine(ri);
