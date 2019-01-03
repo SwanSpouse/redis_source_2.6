@@ -56,10 +56,9 @@ typedef struct sentinelAddr {
 #define SRI_SLAVE   (1<<1)
 #define SRI_SENTINEL (1<<2)
 #define SRI_DISCONNECTED (1<<3)
-#define SRI_S_DOWN (1<<4)   /* Subjectively down (no quorum). */
-#define SRI_O_DOWN (1<<5)   /* Objectively down (quorum reached). */
-#define SRI_MASTER_DOWN (1<<6) /* A Sentinel with this flag set thinks that
-                                   its master is down. */
+#define SRI_S_DOWN (1<<4)   /* Subjectively down (no quorum). */  // 主观下线
+#define SRI_O_DOWN (1<<5)   /* Objectively down (quorum reached). */ // 客观下线
+#define SRI_MASTER_DOWN (1<<6) /* A Sentinel with this flag set thinks that its master is down. */
 /* SRI_CAN_FAILOVER when set in an SRI_MASTER instance means that we are
  * allowed to perform the failover for this master.
  * When set in a SRI_SENTINEL instance means that sentinel is allowed to
@@ -139,6 +138,7 @@ typedef struct sentinelRedisInstance {
     // 这里一个命令连接；一个订阅连接
     redisAsyncContext *cc; /* Hiredis context for commands. */
     redisAsyncContext *pc; /* Hiredis context for Pub / Sub. */
+    // 等待接受回复的命令数
     int pending_commands;   /* Number of commands sent waiting for a reply. */
     mstime_t cc_conn_time; /* cc connection time. */
     mstime_t pc_conn_time; /* pc connection time. */
@@ -501,17 +501,17 @@ void releaseSentinelAddr(sentinelAddr *sa) {
  *
  *  Any other specifier after "%@" is processed by printf itself.
  */
-void sentinelEvent(int level, char *type, sentinelRedisInstance *ri,
-                   const char *fmt, ...) {
+// type 是 pub/sub中的channelName
+// sentinelEvent(REDIS_WARNING, "+sdown", ri, "%@");
+void sentinelEvent(int level, char *type, sentinelRedisInstance *ri, const char *fmt, ...) {
     va_list ap;
     char msg[REDIS_MAX_LOGMSG_LEN];
     robj *channel, *payload;
 
     /* Handle %@ */
     if (fmt[0] == '%' && fmt[1] == '@') {
-        sentinelRedisInstance *master = (ri->flags & SRI_MASTER) ?
-                                        NULL : ri->master;
-
+        // ri是master的话 master为NULL，ri是slave master为slave的master
+        sentinelRedisInstance *master = (ri->flags & SRI_MASTER) ? NULL : ri->master;
         if (master) {
             snprintf(msg, sizeof(msg), "%s %s %s %d @ %s %s %d",
                      sentinelRedisInstanceTypeStr(ri),
@@ -540,8 +540,10 @@ void sentinelEvent(int level, char *type, sentinelRedisInstance *ri,
 
     /* Publish the message via Pub/Sub if it's not a debugging one. */
     if (level != REDIS_DEBUG) {
+        // 在这里type就是channelName
         channel = createStringObject(type, strlen(type));
         payload = createStringObject(msg, strlen(msg));
+        // 发送消息
         pubsubPublishMessage(channel, payload);
         decrRefCount(channel);
         decrRefCount(payload);
@@ -1260,6 +1262,7 @@ char *sentinelHandleConfiguration(char **argv, int argc) {
 /* ====================== hiredis connection handling ======================= */
 
 /* Completely disconnect an hiredis link from an instance. */
+// 断开连接 
 void sentinelKillLink(sentinelRedisInstance *ri, redisAsyncContext *c) {
     if (ri->cc == c) {
         ri->cc = NULL;
@@ -1267,6 +1270,7 @@ void sentinelKillLink(sentinelRedisInstance *ri, redisAsyncContext *c) {
     }
     if (ri->pc == c) ri->pc = NULL;
     c->data = NULL;
+    // 把ri的flags标记为disconnected
     ri->flags |= SRI_DISCONNECTED;
     redisAsyncFree(c);
 }
@@ -1391,7 +1395,7 @@ void sentinelReconnectInstance(sentinelRedisInstance *ri) {
 /* ======================== Redis instances pinging  ======================== */
 
 /* Process the INFO output from masters. */
-// 处理INFO 命令的结果
+// 处理INFO 命令的结果 TODO @lmj 猜测，这里面就是从master和slave同步过来整个系统的拓扑信息，然后创建相应的对象。
 void sentinelRefreshInstanceInfo(sentinelRedisInstance *ri, const char *info) {
     sds *lines;
     int numlines, j;
@@ -1602,10 +1606,12 @@ void sentinelRefreshInstanceInfo(sentinelRedisInstance *ri, const char *info) {
     }
 }
 
+// sentinel 向 master slave发送INFO命令的回调
 void sentinelInfoReplyCallback(redisAsyncContext *c, void *reply, void *privdata) {
     sentinelRedisInstance *ri = c->data;
     redisReply *r;
 
+    // 等待的命令数减一
     if (ri) ri->pending_commands--;
     if (!reply || !ri) return;
     r = reply;
@@ -1623,10 +1629,12 @@ void sentinelDiscardReplyCallback(redisAsyncContext *c, void *reply, void *privd
     if (ri) ri->pending_commands--;
 }
 
+// sentinel给 slave master发送PING命令的callback
 void sentinelPingReplyCallback(redisAsyncContext *c, void *reply, void *privdata) {
     sentinelRedisInstance *ri = c->data;
     redisReply *r;
 
+    // 等待回复的命令数
     if (ri) ri->pending_commands--;
     if (!reply || !ri) return;
     r = reply;
@@ -1638,6 +1646,7 @@ void sentinelPingReplyCallback(redisAsyncContext *c, void *reply, void *privdata
         if (strncmp(r->str, "PONG", 4) == 0 ||
             strncmp(r->str, "LOADING", 7) == 0 ||
             strncmp(r->str, "MASTERDOWN", 10) == 0) {
+                // 如果收到了PONG LOADING MASTERDOWN则更新mstime
             ri->last_avail_time = mstime();
         } else {
             /* Send a SCRIPT KILL command if the instance appears to be
@@ -1650,6 +1659,7 @@ void sentinelPingReplyCallback(redisAsyncContext *c, void *reply, void *privdata
             }
         }
     }
+    // 上一次接收到PING命令回复的时间，不一定是PONG。也有可能是LOADING MASTERDOWN
     ri->last_pong_time = mstime();
 }
 
@@ -1751,6 +1761,7 @@ void sentinelReceiveHelloMessages(redisAsyncContext *c, void *reply, void *privd
     }
 }
 
+// 这里面给ri 发送INFO或者PING命令
 void sentinelPingInstance(sentinelRedisInstance *ri) {
     mstime_t now = mstime();
     mstime_t info_period;
@@ -2189,7 +2200,7 @@ void sentinelInfoCommand(redisClient *c) {
 /* ===================== SENTINEL availability checks ======================= */
 
 /* Is this instance down from our point of view? */
-// 主观下线检测
+// 主观下线检测，这里也没有向master发送消息进行确认，只是根据时间来判断了这个事情。
 void sentinelCheckSubjectivelyDown(sentinelRedisInstance *ri) {
     mstime_t elapsed = mstime() - ri->last_avail_time;
 
@@ -2217,51 +2228,65 @@ void sentinelCheckSubjectivelyDown(sentinelRedisInstance *ri) {
     }
 
     /* Update the subjectively down flag. */
+    // 如果上次活跃的时间距离当前时间超过了 down_after_period那么把它标记为主观下线
     if (elapsed > ri->down_after_period) {
         /* Is subjectively down */
+        // 没down把它标记为down，主要是记录了down的时间；并且将标志位修改为down
         if ((ri->flags & SRI_S_DOWN) == 0) {
+            // 如果主观标记了下线，则会通过channel来告知这个事情
             sentinelEvent(REDIS_WARNING, "+sdown", ri, "%@");
             ri->s_down_since_time = mstime();
             ri->flags |= SRI_S_DOWN;
         }
     } else {
         /* Is subjectively up */
+        // 如果活跃时间超过down_after_period，但是还被标记为down了，说明SRI又活过来了
         if (ri->flags & SRI_S_DOWN) {
             sentinelEvent(REDIS_WARNING, "-sdown", ri, "%@");
+            // 将标记的down状态取消
             ri->flags &= ~(SRI_S_DOWN | SRI_SCRIPT_KILL_SENT);
         }
     }
 }
 
 /* Is this instance down accordingly to the configured quorum? */
+// 检查是否客观下线， 能进到这里的sentinelRedisInstance都是master
+// 这里并没有向各个sentinel发送消息询问，只是统计了一下各个sentinel对master的看法。
 void sentinelCheckObjectivelyDown(sentinelRedisInstance *master) {
     dictIterator *di;
     dictEntry *de;
     int quorum = 0, odown = 0;
 
+    // 首先需要判定了主观下线才行
     if (master->flags & SRI_S_DOWN) {
+        // quorum=1 这个是当前的sentinel判断master已经down了。
         /* Is down for enough sentinels? */
         quorum = 1; /* the current sentinel. */
         /* Count all the other sentinels. */
+        // 现在来统计其他的sentinel对这个事情的看法。
+        // 注意，这里统计的是该master下面所有sentinel对这个master的看法!
         di = dictGetIterator(master->sentinels);
         while ((de = dictNext(di)) != NULL) {
             sentinelRedisInstance *ri = dictGetVal(de);
-
+            // 如果有sentinel也认为它主观下线了，则quorum++
             if (ri->flags & SRI_MASTER_DOWN) quorum++;
         }
         dictReleaseIterator(di);
+        // 如果超过半数的sentinel认为主观下线，则odown 客观下线值为1
         if (quorum >= master->quorum) odown = 1;
     }
 
     /* Set the flag accordingly to the outcome. */
+    // 如果已经被认定为客观下线
     if (odown) {
         if ((master->flags & SRI_O_DOWN) == 0) {
-            sentinelEvent(REDIS_WARNING, "+odown", master, "%@ #quorum %d/%d",
-                          quorum, master->quorum);
+            sentinelEvent(REDIS_WARNING, "+odown", master, "%@ #quorum %d/%d", quorum, master->quorum);
+            // 会把客观下线的标志位设置为SRI_O_DOWN
             master->flags |= SRI_O_DOWN;
             master->o_down_since_time = mstime();
         }
     } else {
+        // 如果本次没有被认定为客观下线，则重新将客观下线的标志位置为0.
         if (master->flags & SRI_O_DOWN) {
             sentinelEvent(REDIS_WARNING, "-odown", master, "%@");
             master->flags &= ~SRI_O_DOWN;
@@ -3032,7 +3057,7 @@ void sentinelHandleRedisInstance(sentinelRedisInstance *ri) {
     }
 
     /* Every kind of instance */
-    // 检测主观下线
+    // 检测主观下线，如果主观下线，将其标志位标记为down，同时会释放一些资源。
     sentinelCheckSubjectivelyDown(ri);
 
     /* Masters and slaves */
@@ -3044,6 +3069,7 @@ void sentinelHandleRedisInstance(sentinelRedisInstance *ri) {
     if (ri->flags & SRI_MASTER) {
         // 检测客观下线
         sentinelCheckObjectivelyDown(ri);
+        // 这个是进行故障转移操作!!!
         sentinelStartFailoverIfNeeded(ri);
         sentinelFailoverStateMachine(ri);
         sentinelAbortFailoverIfNeeded(ri);
