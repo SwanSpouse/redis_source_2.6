@@ -2018,8 +2018,8 @@ int processCommand(redisClient *c) {
     /* Only allow INFO and SLAVEOF when slave-serve-stale-data is no and
      * we are a slave with a broken link with master. */
     // 在附属节点带有过期数据时，只允许执行 INFO 和 SLAVEOF 命令
-    if (server.masterhost && server.repl_state != REDIS_REPL_CONNECTED &&
-        server.repl_serve_stale_data == 0 &&
+    // 在server是slave节点并且master没有回复的时候才进行回复。
+    if (server.masterhost && server.repl_state != REDIS_REPL_CONNECTED && server.repl_serve_stale_data == 0 &&
         !(c->cmd->flags & REDIS_CMD_STALE)) {
         flagTransaction(c);
         addReply(c, shared.masterdownerr);
