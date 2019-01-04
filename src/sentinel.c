@@ -551,11 +551,9 @@ void sentinelEvent(int level, char *type, sentinelRedisInstance *ri, const char 
 
     /* Call the notification script if applicable. */
     if (level == REDIS_WARNING && ri != NULL) {
-        sentinelRedisInstance *master = (ri->flags & SRI_MASTER) ?
-                                        ri : ri->master;
+        sentinelRedisInstance *master = (ri->flags & SRI_MASTER) ? ri : ri->master;
         if (master->notification_script) {
-            sentinelScheduleScriptExecution(master->notification_script,
-                                            type, msg, NULL);
+            sentinelScheduleScriptExecution(master->notification_script, type, msg, NULL);
         }
     }
 }
@@ -1646,7 +1644,7 @@ void sentinelPingReplyCallback(redisAsyncContext *c, void *reply, void *privdata
         if (strncmp(r->str, "PONG", 4) == 0 ||
             strncmp(r->str, "LOADING", 7) == 0 ||
             strncmp(r->str, "MASTERDOWN", 10) == 0) {
-                // 如果收到了PONG LOADING MASTERDOWN则更新mstime
+            // 如果收到了PONG LOADING MASTERDOWN则更新mstime
             ri->last_avail_time = mstime();
         } else {
             /* Send a SCRIPT KILL command if the instance appears to be
@@ -2033,6 +2031,7 @@ sentinelRedisInstance *sentinelGetMasterByNameOrReplyError(redisClient *c,
     return ri;
 }
 
+// 处理sentinel命令
 void sentinelCommand(redisClient *c) {
     if (!strcasecmp(c->argv[1]->ptr, "masters")) {
         /* SENTINEL MASTERS */
@@ -2065,20 +2064,20 @@ void sentinelCommand(redisClient *c) {
         if (c->argc != 4) goto numargserr;
         if (getLongFromObjectOrReply(c, c->argv[3], &port, NULL) != REDIS_OK)
             return;
-        ri = getSentinelRedisInstanceByAddrAndRunID(sentinel.masters,
-                                                    c->argv[2]->ptr, port, NULL);
+        ri = getSentinelRedisInstanceByAddrAndRunID(sentinel.masters, c->argv[2]->ptr, port, NULL);
 
         /* It exists? Is actually a master? Is subjectively down? It's down.
          * Note: if we are in tilt mode we always reply with "0". */
-        if (!sentinel.tilt && ri && (ri->flags & SRI_S_DOWN) &&
-            (ri->flags & SRI_MASTER))
+        if (!sentinel.tilt && ri && (ri->flags & SRI_S_DOWN) && (ri->flags & SRI_MASTER))
             isdown = 1;
         if (ri) leader = sentinelGetSubjectiveLeader(ri);
 
         /* Reply with a two-elements multi-bulk reply: down state, leader. */
+        // 对is-master-down-by-addr 命令进行回复，回复down 状态，以及leader 是谁。
         addReplyMultiBulkLen(c, 2);
         addReply(c, isdown ? shared.cone : shared.czero);
         addReplyBulkCString(c, leader ? leader : "?");
+        // TODO @lmj 这里没有epoch这个概念呢
         if (leader) sdsfree(leader);
     } else if (!strcasecmp(c->argv[1]->ptr, "reset")) {
         /* SENTINEL RESET <pattern> */
@@ -2128,14 +2127,12 @@ void sentinelCommand(redisClient *c) {
         if (c->argc != 2) goto numargserr;
         sentinelPendingScriptsCommand(c);
     } else {
-        addReplyErrorFormat(c, "Unknown sentinel subcommand '%s'",
-                            (char *) c->argv[1]->ptr);
+        addReplyErrorFormat(c, "Unknown sentinel subcommand '%s'", (char *) c->argv[1]->ptr);
     }
     return;
 
     numargserr:
-    addReplyErrorFormat(c, "Wrong number of commands for 'sentinel %s'",
-                        (char *) c->argv[1]->ptr);
+    addReplyErrorFormat(c, "Wrong number of commands for 'sentinel %s'", (char *) c->argv[1]->ptr);
 }
 
 void sentinelInfoCommand(redisClient *c) {
@@ -2296,6 +2293,7 @@ void sentinelCheckObjectivelyDown(sentinelRedisInstance *master) {
 
 /* Receive the SENTINEL is-master-down-by-addr reply, see the
  * sentinelAskMasterStateToOtherSentinels() function for more information. */
+// 向其它sentinel询问master是否下线的回调
 void sentinelReceiveIsMasterDownReply(redisAsyncContext *c, void *reply, void *privdata) {
     sentinelRedisInstance *ri = c->data;
     redisReply *r;
@@ -2311,12 +2309,15 @@ void sentinelReceiveIsMasterDownReply(redisAsyncContext *c, void *reply, void *p
         r->element[0]->type == REDIS_REPLY_INTEGER &&
         r->element[1]->type == REDIS_REPLY_STRING) {
         ri->last_master_down_reply_time = mstime();
+        // 如果sentinel认为当前的master已经down了，则把起标志位置为SRI_MASTER_DOWN
+        // 1表示服务器已经下线，0表示服务器没有下线
         if (r->element[0]->integer == 1) {
             ri->flags |= SRI_MASTER_DOWN;
         } else {
             ri->flags &= ~SRI_MASTER_DOWN;
         }
         sdsfree(ri->leader);
+        // 设置leader，element[1]存储的是leader的runid
         ri->leader = sdsnew(r->element[1]->str);
     }
 }
@@ -2338,6 +2339,7 @@ void sentinelAskMasterStateToOtherSentinels(sentinelRedisInstance *master) {
         int retval;
 
         /* If the master state from other sentinel is too old, we clear it. */
+        // 如果sentinel的master状态记录过老，清除这个状态
         if (elapsed > SENTINEL_INFO_VALIDITY_TIME) {
             ri->flags &= ~SRI_MASTER_DOWN;
             sdsfree(ri->leader);
@@ -2358,8 +2360,7 @@ void sentinelAskMasterStateToOtherSentinels(sentinelRedisInstance *master) {
         /* Ask */
         // 向其它sentinel 询问master的状态
         ll2string(port, sizeof(port), master->addr->port);
-        retval = redisAsyncCommand(ri->cc,
-                                   sentinelReceiveIsMasterDownReply, NULL,
+        retval = redisAsyncCommand(ri->cc, sentinelReceiveIsMasterDownReply, NULL,
                                    "SENTINEL is-master-down-by-addr %s %s",
                                    master->addr->ip, port);
         if (retval == REDIS_OK) ri->pending_commands++;
@@ -2388,11 +2389,11 @@ int compareRunID(const void *a, const void *b) {
     return strcasecmp(*aptrptr, *bptrptr);
 }
 
+// 获取主观leader
 char *sentinelGetSubjectiveLeader(sentinelRedisInstance *master) {
     dictIterator *di;
     dictEntry *de;
-    char **instance =
-            zmalloc(sizeof(char *) * (dictSize(master->sentinels) + 1));
+    char **instance = zmalloc(sizeof(char *) * (dictSize(master->sentinels) + 1));
     int instances = 0;
     char *leader = NULL;
 
@@ -2406,17 +2407,15 @@ char *sentinelGetSubjectiveLeader(sentinelRedisInstance *master) {
         sentinelRedisInstance *ri = dictGetVal(de);
         mstime_t lag = mstime() - ri->last_avail_time;
 
-        if (lag > SENTINEL_INFO_VALIDITY_TIME ||
-            !(ri->flags & SRI_CAN_FAILOVER) ||
-            (ri->flags & SRI_DISCONNECTED) ||
-            ri->runid == NULL)
+        if (lag > SENTINEL_INFO_VALIDITY_TIME || !(ri->flags & SRI_CAN_FAILOVER) ||
+            (ri->flags & SRI_DISCONNECTED) || ri->runid == NULL)
             continue;
         instance[instances++] = ri->runid;
     }
     dictReleaseIterator(di);
 
-    /* If we have at least one instance passing our checks, order the array
-     * by runid. */
+    /* If we have at least one instance passing our checks, order the array by runid. */
+    // 在这里给instance排序
     if (instances) {
         qsort(instance, instances, sizeof(char *), compareRunID);
         leader = sdsnew(instance[0]);
@@ -3041,8 +3040,8 @@ void sentinelHandleRedisInstance(sentinelRedisInstance *ri) {
     }
 
     /* Only masters */
+    // 向其它sentinel询问master的状态
     if (ri->flags & SRI_MASTER) {
-        // 向其它sentinel询问master的状态
         sentinelAskMasterStateToOtherSentinels(ri);
     }
 
