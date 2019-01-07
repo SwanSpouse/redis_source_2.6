@@ -2175,8 +2175,10 @@ void sentinelInfoCommand(redisClient *c) {
             sentinelRedisInstance *ri = dictGetVal(de);
             char *status = "ok";
 
-            if (ri->flags & SRI_O_DOWN) status = "odown";
-            else if (ri->flags & SRI_S_DOWN) status = "sdown";
+            if (ri->flags & SRI_O_DOWN)
+                status = "odown";
+            else if (ri->flags & SRI_S_DOWN)
+                status = "sdown";
             info = sdscatprintf(info,
                                 "master%d:name=%s,status=%s,address=%s:%d,"
                                         "slaves=%lu,sentinels=%lu\r\n",
@@ -2188,8 +2190,7 @@ void sentinelInfoCommand(redisClient *c) {
         dictReleaseIterator(di);
     }
 
-    addReplySds(c, sdscatprintf(sdsempty(), "$%lu\r\n",
-                                (unsigned long) sdslen(info)));
+    addReplySds(c, sdscatprintf(sdsempty(), "$%lu\r\n", (unsigned long) sdslen(info)));
     addReplySds(c, info);
     addReply(c, shared.crlf);
 }
@@ -2383,7 +2384,8 @@ void sentinelAskMasterStateToOtherSentinels(sentinelRedisInstance *master) {
  * leader sentinel instance (from our point of view). Otherwise NULL is
  * returned if there are no suitable sentinels.
  */
-
+// TODO @lmj 感觉这里直接比较的就是runID的大小（字典序）
+// 但是run id是随机生成的啊。这里没有顺序可言啊。所以这里是在干嘛呢？
 int compareRunID(const void *a, const void *b) {
     char **aptrptr = (char **) a, **bptrptr = (char **) b;
     return strcasecmp(*aptrptr, *bptrptr);
@@ -2393,15 +2395,18 @@ int compareRunID(const void *a, const void *b) {
 char *sentinelGetSubjectiveLeader(sentinelRedisInstance *master) {
     dictIterator *di;
     dictEntry *de;
+    // 首先申请sentinels + 1个大小的数组 +1是算上自己了。
     char **instance = zmalloc(sizeof(char *) * (dictSize(master->sentinels) + 1));
     int instances = 0;
     char *leader = NULL;
 
+    // 如果master的标志在这里是failover的，那么把runid复制给instance 0
     if (master->flags & SRI_CAN_FAILOVER) {
         /* Add myself if I'm a Sentinel that can failover this master. */
         instance[instances++] = server.runid;
     }
 
+    // 遍历所有其他的instance，
     di = dictGetIterator(master->sentinels);
     while ((de = dictNext(di)) != NULL) {
         sentinelRedisInstance *ri = dictGetVal(de);
@@ -2415,9 +2420,10 @@ char *sentinelGetSubjectiveLeader(sentinelRedisInstance *master) {
     dictReleaseIterator(di);
 
     /* If we have at least one instance passing our checks, order the array by runid. */
-    // 在这里给instance排序
+    // 根据runid给instance排序
     if (instances) {
         qsort(instance, instances, sizeof(char *), compareRunID);
+        // TODO @lmj 那岂不是永远都是run id最小的那个sentinel 被选择为leader吗？
         leader = sdsnew(instance[0]);
     }
     zfree(instance);
@@ -2431,6 +2437,7 @@ struct sentinelLeader {
 
 /* Helper function for sentinelGetObjectiveLeader, increment the counter
  * relative to the specified runid. */
+// 用来给leader选举计数
 void sentinelObjectiveLeaderIncr(dict *counters, char *runid) {
     dictEntry *de = dictFind(counters, runid);
     uint64_t oldval;
@@ -2447,6 +2454,7 @@ void sentinelObjectiveLeaderIncr(dict *counters, char *runid) {
 
 /* Scan all the Sentinels attached to this master to check what is the
  * most voted leader among Sentinels. */
+// 投票统计，找到投票出来的leader 客观下线选举出来的leader
 char *sentinelGetObjectiveLeader(sentinelRedisInstance *master) {
     dict *counters;
     dictIterator *di;
@@ -2459,24 +2467,28 @@ char *sentinelGetObjectiveLeader(sentinelRedisInstance *master) {
     counters = dictCreate(&leaderVotesDictType, NULL);
 
     /* Count my vote. */
+    // 获取当前sentinel 认为的leader
     myvote = sentinelGetSubjectiveLeader(master);
     if (myvote) {
+        // 给leader当前的leader计数
         sentinelObjectiveLeaderIncr(counters, myvote);
         voters++;
     }
 
     /* Count other sentinels votes */
+    // 统计有多少sentinel 进行了投票
     di = dictGetIterator(master->sentinels);
     while ((de = dictNext(di)) != NULL) {
         sentinelRedisInstance *ri = dictGetVal(de);
-        if (ri->leader == NULL) continue;
+        if (ri->leader == NULL)
+            continue;
         /* If the failover is not already in progress we are only interested
          * in Sentinels that believe the master is down. Otherwise the leader
          * selection is useful for the "failover-takedown" when the original
          * leader fails. In that case we consider all the voters. */
-        if (!(master->flags & SRI_FAILOVER_IN_PROGRESS) &&
-            !(ri->flags & SRI_MASTER_DOWN))
+        if (!(master->flags & SRI_FAILOVER_IN_PROGRESS) && !(ri->flags & SRI_MASTER_DOWN))
             continue;
+        // 依次统计各个leader的票数
         sentinelObjectiveLeaderIncr(counters, ri->leader);
         voters++;
     }
@@ -2502,6 +2514,7 @@ char *sentinelGetObjectiveLeader(sentinelRedisInstance *master) {
         if (winner && (max_votes < voters_quorum || max_votes < master->quorum))
             winner = NULL;
     }
+    // 最终选出winner 也就是客观下线后所有sentinel投票出来的leader
     winner = winner ? sdsnew(winner) : NULL;
     sdsfree(myvote);
     dictRelease(counters);
@@ -2555,16 +2568,18 @@ void sentinelStartFailoverIfNeeded(sentinelRedisInstance *master) {
      * there is not already a failover in progress (to perform the
      * takedown if the leader died) or if this Sentinel is not allowed
      * to start a failover. */
-    if (!(master->flags & SRI_CAN_FAILOVER) ||
-        !(master->flags & (SRI_O_DOWN | SRI_FAILOVER_IN_PROGRESS)))
+    if (!(master->flags & SRI_CAN_FAILOVER) || !(master->flags & (SRI_O_DOWN | SRI_FAILOVER_IN_PROGRESS)))
         return;
-
+    // 或许最终选举出来的leader
     leader = sentinelGetObjectiveLeader(master);
+    // 判断当前的sentinel是不是leader
     isleader = leader && strcasecmp(leader, server.runid) == 0;
     sdsfree(leader);
 
     /* If I'm not the leader, I can't failover for sure. */
-    if (!isleader) return;
+    // 如果当前的sentinel不是leader，则直接退出
+    if (!isleader)
+        return;
 
     /* If the failover is already in progress there are two options... */
     if (master->flags & SRI_FAILOVER_IN_PROGRESS) {
@@ -3070,6 +3085,7 @@ void sentinelHandleRedisInstance(sentinelRedisInstance *ri) {
         sentinelCheckObjectivelyDown(ri);
         // 这个是进行故障转移操作!!!
         sentinelStartFailoverIfNeeded(ri);
+        // 执行故障转移
         sentinelFailoverStateMachine(ri);
         sentinelAbortFailoverIfNeeded(ri);
     }

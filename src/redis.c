@@ -1276,6 +1276,7 @@ void createSharedObjects(void) {
  * 初始化 server 结构
  */
 void initServerConfig() {
+    // 首先随机生成run iD 作为server的唯一标识符
     getRandomHexChars(server.runid, REDIS_RUN_ID_SIZE);
     server.runid[REDIS_RUN_ID_SIZE] = '\0';
 
