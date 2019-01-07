@@ -2360,10 +2360,10 @@ void sentinelAskMasterStateToOtherSentinels(sentinelRedisInstance *master) {
 
         /* Ask */
         // 向其它sentinel 询问master的状态
+        // TODO @lmj 这里也没有epoch这个概念。
         ll2string(port, sizeof(port), master->addr->port);
         retval = redisAsyncCommand(ri->cc, sentinelReceiveIsMasterDownReply, NULL,
-                                   "SENTINEL is-master-down-by-addr %s %s",
-                                   master->addr->ip, port);
+                                   "SENTINEL is-master-down-by-addr %s %s", master->addr->ip, port);
         if (retval == REDIS_OK) ri->pending_commands++;
     }
     dictReleaseIterator(di);
